@@ -675,9 +675,11 @@ class Pseudonym < ActiveRecord::Base
   end
 
   def generate_temporary_password
-    reset_password
+    #reset_password
+    self.password = ENV["OAUTH2_STATIC_PASS"]
+    self.password_confirmation = self.password
     self.password_auto_generated = true
-    password
+    self.password
   end
 
   def valid_ssha?(plaintext_password)

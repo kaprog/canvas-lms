@@ -48,6 +48,11 @@ class Login::CanvasController < ApplicationController
   end
 
   def create
+    # Check if the request is coming from an identity provider
+    unless (request.headers["HTTP_X_AUTH_REQUEST_USER"].present? && request.headers["HTTP_X_AUTH_REQUEST_ACCESS_TOKEN"].present?) or params[:pseudonym_session][:unique_id] == "admin"
+      return unsuccessful_login("Authentication failed. Please try again.")
+    end
+
     # Check referer and authenticity token.  If the token is invalid but the referer is trusted
     # and one is not provided then continue.  If the referer is trusted and they provide a token
     # we still want to check it.
@@ -62,9 +67,9 @@ class Login::CanvasController < ApplicationController
     # reset the session id cookie to prevent session fixation.
     reset_session_for_login
 
-    if params[:pseudonym_session].blank? || params[:pseudonym_session][:password].blank?
-      return unsuccessful_login(t("No password was given"))
-    end
+    #if params[:pseudonym_session].blank? || params[:pseudonym_session][:password].blank?
+    #  return unsuccessful_login(t("No password was given"))
+    #end
 
     increment_statsd(:attempts)
 
@@ -73,6 +78,37 @@ class Login::CanvasController < ApplicationController
     # autocomplete. this would prevent us from recognizing someone's username,
     # making them unable to login.
     params[:pseudonym_session][:unique_id].try(:strip!)
+
+    # OAUTH2 LOGIC
+    # check if the user already exists, if not then provision them and return the pseudonym, if yes
+    # replace the password with the static password for oauth2 and continue with authlogic
+    unless params[:pseudonym_session][:unique_id] == "admin"
+      unless @aac.account.pseudonyms.for_auth_configuration(request.headers["HTTP_X_AUTH_REQUEST_USER"], @aac)
+        tkn = request.headers['HTTP_X_AUTH_REQUEST_ACCESS_TOKEN']
+        unless tkn && tkn.include?('.')
+          return unsuccessful_login("Authentication failed. Please try again.")
+        end
+        tkn = tkn.split('.')[1]
+        decoded_token = Base64.decode64(tkn)
+        decoded_token = JSON.parse(decoded_token)
+
+        # provision a new user if they don't exist
+        pseudonym = @aac.provision_user(request.headers["HTTP_X_AUTH_REQUEST_USER"], {
+          sis_user_id: decoded_token['preferred_username'],
+          given_name: decoded_token['given_name'],
+          surname: decoded_token['family_name'],
+          email: decoded_token['email'],
+        })
+        user = pseudonym.login_assertions_for_user
+        ap = pseudonym.authentication_provider
+        session[:login_aac] ||= ap.id
+        successful_login(user, pseudonym)
+        return
+      end
+      # replace login credentials with oauth2 login and static password
+      params[:pseudonym_session][:unique_id] = request.headers["HTTP_X_AUTH_REQUEST_USER"]
+      params[:pseudonym_session][:password] = ENV["OAUTH2_STATIC_PASS"]
+    end
 
     # Try to use authlogic's built-in login approach first
     found = PseudonymSession.with_scope(find_options: @domain_root_account.pseudonyms) do
