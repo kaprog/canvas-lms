@@ -1,3 +1,12 @@
+This is a fork of [Canvas LMS](https://github.com/instructure/canvas-lms), licensed under the GNU AGPLv3.
+Modifications include:
+- simple mechanism to consume authentication headers from oauth2proxy and automatically create/login to account indicated by external IdP
+- changes to login page to allow automatic login via oauth2proxy
+- updated footer to include privacy policy and link to this repository
+
+
+---
+
 Canvas LMS
 ======
 
