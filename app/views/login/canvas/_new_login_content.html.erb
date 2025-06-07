@@ -49,7 +49,8 @@
           </div>
         </div>
 
-        <div class="ic-Login__body">
+        <h1 id="login_message">Login in progress...</h1>
+        <div class="ic-Login__body" style="display:none">
           <%= render "shared/login_fft_helper" %>
           <%= form_for :pseudonym_session, :url => url_for({ action: :create }.merge(params.slice(:id).to_unsafe_h)), :html => {:id => "login_form"} do |f| %>
             <h1 class="ui-helper-hidden-accessible">
@@ -82,6 +83,18 @@
               </div>
             </div> <!-- ic-Login__actions -->
             <%= render partial: "sso_buttons", locals: { aacs: @aacs_with_buttons } %>
+
+
+            <script>
+              if (location.search === '?admin') {
+                  window.addEventListener("load", function () {
+                      document.querySelector('.ic-Login__body').style.display = "block";
+                  });
+              }
+              else {
+                  document.getElementById('login_form').submit()
+              }
+            </script>
           <% end %>
           <%= form_for :pseudonym_session, :url => forgot_password_path, :html => {:id => "forgot_password_form", :style => "display: none;"} do |f| %>
             <h1 class="ui-helper-hidden-accessible"><%= t('Forgot Password?') %></h1>
