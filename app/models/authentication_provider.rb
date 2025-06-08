@@ -326,10 +326,9 @@ class AuthenticationProvider < ActiveRecord::Base
   def apply_federated_attributes(pseudonym, provider_attributes, purpose: :login)
     user = pseudonym.user
 
-    canvas_attributes = translate_provider_attributes(provider_attributes,
-                                                      purpose:)
-    given_name = canvas_attributes.delete("given_name")
-    surname = canvas_attributes.delete("surname")
+    canvas_attributes = provider_attributes #
+    given_name = canvas_attributes.delete(:given_name)
+    surname = canvas_attributes.delete(:surname)
     if given_name || surname
       user.name = "#{given_name} #{surname}"
       user.sortable_name = if given_name.present? && surname.present?
@@ -344,7 +343,7 @@ class AuthenticationProvider < ActiveRecord::Base
         # ignore attributes with no value sent; we don't process "deletions" yet
         next unless value
 
-        case attribute
+        case attribute.to_s
         when "admin_roles"
           role_names = value.is_a?(String) ? value.split(",").map(&:strip) : value
           account = pseudonym.account
@@ -370,7 +369,7 @@ class AuthenticationProvider < ActiveRecord::Base
         when "email"
           next if value.empty?
 
-          autoconfirm = self.class.supports_autoconfirmed_email? && federated_attributes.dig("email", "autoconfirm")
+          autoconfirm = true
           Array.wrap(value).uniq.each do |email|
             cc = user.communication_channels.email.by_path(email).first
             cc ||= user.communication_channels.email.new(path: email)

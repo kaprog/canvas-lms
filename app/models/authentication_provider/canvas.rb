@@ -75,6 +75,7 @@ class AuthenticationProvider::Canvas < AuthenticationProvider
   end
 
   def user_logout_redirect(controller, _current_user)
-    controller.canvas_login_url unless controller.instance_variable_get(:@domain_root_account).auth_discovery_url
+    #controller.canvas_login_url unless controller.instance_variable_get(:@domain_root_account).auth_discovery_url
+    ENV["OAUTH2_LOGOUT_URL"]
   end
 end
